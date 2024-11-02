@@ -1,0 +1,184 @@
+enum UserStatus {
+    INVITED
+    VERIFIED
+}
+
+model User {
+    id               String            @id @default(uuid())
+    name             String?
+    email            String?           @unique
+    pictureUrl       String?           @default('https://i.imgur.com/ZdJSK3Y.jpeg')
+    tokenInvitation  String?
+
+    stripeCustomerId String?
+
+    status           UserStatus        @default(VERIFIED)
+
+    // this is the role of the user for the application
+    globalRole       String            @default('USER')
+    password         String?           @password @omit
+    createdAt        DateTime          @default(now())
+    updatedAt        DateTime          @updatedAt @default(now())
+
+    pwaSubscriptions PwaSubscription[] @relation("user")
+
+    brands           Brand[]           @relation("user")
+    reviews          Review[]          @relation("user")
+    carts            Cart[]            @relation("user")
+    orders           Order[]           @relation("user")
+    brandFollowers   BrandFollower[]   @relation("user")
+
+    @@auth()
+    @@allow("all", auth().id == this.id)
+    @@allow('all', auth().globalRole == 'ADMIN')
+
+    //we only allow that user to register if they don't create an admin role
+    @@allow("create", globalRole != 'ADMIN')
+    @@allow("read", true)
+}
+
+model Brand {
+
+    id             String          @id @default(uuid())
+    name           String
+    description    String?
+    rating         String?
+    logoUrl        String?
+
+    userId         String
+    user           User?           @relation(fields: [userId], references: [id], name: "user")
+
+    products       Product[]       @relation("brand")
+    orders         Order[]         @relation("brand")
+    brandFollowers BrandFollower[] @relation("brand")
+    createdAt      DateTime        @default(now())
+    updatedAt      DateTime        @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model Product {
+
+    id          String      @id @default(uuid())
+    name        String
+    description String?
+    price       String
+    category    String?
+    stock       Float
+    featured    Boolean
+    trending    Boolean
+
+    brandId     String
+    brand       Brand?      @relation(fields: [brandId], references: [id], name: "brand")
+
+    reviews     Review[]    @relation("product")
+    cartItems   CartItem[]  @relation("product")
+    orderItems  OrderItem[] @relation("product")
+    createdAt   DateTime    @default(now())
+    updatedAt   DateTime    @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model Review {
+
+    id        String   @id @default(uuid())
+    rating    Float
+    comment   String?
+
+    userId    String
+    user      User?    @relation(fields: [userId], references: [id], name: "user")
+    productId String
+    product   Product? @relation(fields: [productId], references: [id], name: "product")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model Cart {
+
+    id        String     @id @default(uuid())
+    status    String
+
+    userId    String
+    user      User?      @relation(fields: [userId], references: [id], name: "user")
+
+    cartItems CartItem[] @relation("cart")
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model CartItem {
+
+    id        String   @id @default(uuid())
+    quantity  Float
+
+    cartId    String
+    cart      Cart?    @relation(fields: [cartId], references: [id], name: "cart")
+    productId String
+    product   Product? @relation(fields: [productId], references: [id], name: "product")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model Order {
+
+    id         String      @id @default(uuid())
+    status     String
+    total      String
+
+    userId     String
+    user       User?       @relation(fields: [userId], references: [id], name: "user")
+    brandId    String
+    brand      Brand?      @relation(fields: [brandId], references: [id], name: "brand")
+
+    orderItems OrderItem[] @relation("order")
+    createdAt  DateTime    @default(now())
+    updatedAt  DateTime    @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model OrderItem {
+
+    id        String   @id @default(uuid())
+    quantity  Float
+    price     String
+
+    orderId   String
+    order     Order?   @relation(fields: [orderId], references: [id], name: "order")
+    productId String
+    product   Product? @relation(fields: [productId], references: [id], name: "product")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model BrandFollower {
+
+    id        String   @id @default(uuid())
+
+    userId    String
+    user      User?    @relation(fields: [userId], references: [id], name: "user")
+    brandId   String
+    brand     Brand?   @relation(fields: [brandId], references: [id], name: "brand")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt @default(now())
+    @@allow("all", true)
+}
+
+model PwaSubscription {
+    id        String   @id @default(uuid())
+    content   String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt @default(now())
+
+    userId    String   @default(auth().id)
+    user      User     @relation(fields: [userId], references: [id], name: 'user')
+
+    @@allow("all", true)
+}
+
